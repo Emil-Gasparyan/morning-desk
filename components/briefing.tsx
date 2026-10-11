@@ -1,13 +1,14 @@
 "use client";
 
-import { AlarmClock, ExternalLink, Pencil, Play, RefreshCw, Star } from "lucide-react";
+import { AlarmClock, ExternalLink, Pencil, RefreshCw, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Headline } from "@/lib/topics";
-import { VOICES, type Preferences } from "@/lib/preferences";
+import type { Preferences } from "@/lib/preferences";
 import { SOURCES } from "@/lib/sources";
 import { useNow } from "@/lib/use-now";
 import { AppShell } from "./app-shell";
+import { AudioBriefing } from "./audio-briefing";
 import { formatTime } from "./preference-fields";
 import { Card } from "./ui";
 
@@ -40,7 +41,6 @@ function Briefing({ prefs }: { prefs: Preferences }) {
   }, [query, reload]);
 
   const loading = !result || result.query !== query;
-  const voice = VOICES.find((v) => v.id === prefs.voice)?.name;
 
   return (
     <div className="space-y-10">
@@ -54,32 +54,7 @@ function Briefing({ prefs }: { prefs: Preferences }) {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card className="sunrise p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-widest text-zinc-500">Your audio briefing</p>
-              <p className="mt-1 text-lg font-semibold">
-                {prefs.length} minutes · {voice} voice
-              </p>
-            </div>
-            <span className="shrink-0 rounded-full bg-zinc-900/[.06] px-2.5 py-1 text-xs font-medium text-zinc-600 dark:bg-white/10 dark:text-zinc-300">
-              Coming soon
-            </span>
-          </div>
-          <div className="mt-6 flex items-center gap-4">
-            <button
-              disabled
-              aria-label="Play briefing (coming soon)"
-              className="grid size-14 shrink-0 place-items-center rounded-full bg-zinc-900 text-white opacity-40 dark:bg-white dark:text-zinc-900"
-            >
-              <Play className="ml-0.5 size-6 fill-current" aria-hidden />
-            </button>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              Spoken briefings are the next thing we&apos;re building. Until then, here are the headlines it will
-              cover.
-            </p>
-          </div>
-        </Card>
+        <AudioBriefing prefs={prefs} />
 
         <Card className="flex flex-col p-6">
           <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-zinc-500">

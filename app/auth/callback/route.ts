@@ -1,6 +1,5 @@
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { supabaseServer } from "@/lib/supabase/server";
 
 // The sign-in email links here. We swap the one-time code in the link for a
 // session (saved as cookies), then send the person on to their briefing.
@@ -10,17 +9,7 @@ export async function GET(request: Request) {
   const next = safePath(url.searchParams.get("next"));
 
   if (code) {
-    const cookieStore = await cookies();
-    const client = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-      {
-        cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: (toSet) => toSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)),
-        },
-      },
-    );
+    const client = await supabaseServer();
     const { error } = await client.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(new URL(next, url.origin));
   }

@@ -2,7 +2,7 @@
 
 A daily news briefing read aloud. Create a profile, pick your topics, the outlets you trust and the time you listen, and each morning you get a short, radio-style spoken summary of the news made for you.
 
-**Status:** Landing page, sign-up flow, headline dashboard and settings built (step 3 of 7) · Accounts next
+**Status:** Accounts and on-demand audio briefings working (step 5 of 7) · Daily automatic briefings next
 
 Live: https://morning-desk-opal.vercel.app
 
@@ -13,7 +13,8 @@ Live: https://morning-desk-opal.vercel.app
 - **Schedule:** choose the time and days you listen. Your briefing is ready before then.
 - **Voice and length:** pick a voice style and a 3, 5 or 10 minute briefing.
 - **Accounts:** sign in with a link sent to your email, no password. Preferences follow you to any device.
-- **Coming:** spoken MP3 briefings, private podcast feed, email delivery.
+- **Audio briefing:** press "Make my briefing" and hear your headlines read aloud, each with its source, in the voice you picked.
+- **Coming:** automatic daily briefings, private podcast feed, email delivery, AI-written scripts.
 
 ## How it works
 
@@ -22,7 +23,7 @@ Vercel Cron (~5 AM) → /api/generate
   1. Read each user's settings   Supabase
   2. Fetch headlines             Google News RSS
   3. Write the script            plain read-out first, Claude API later
-  4. Turn it into audio          Text-to-speech (OpenAI / ElevenLabs / Google) → MP3
+  4. Turn it into audio          ElevenLabs text-to-speech → MP3
   5. Save the MP3                Vercel Blob
 → Delivered via the web app player, a private podcast feed, or email (Resend, optional)
 ```
@@ -38,7 +39,7 @@ Full diagrams, the component table, and costs are in [`docs/architecture.html`](
 | Accounts and settings | Supabase (email-link sign-in) |
 | News source | Google News RSS |
 | Script writing | Plain read-out, Claude API later |
-| Voice | OpenAI TTS, ElevenLabs or Google Cloud TTS |
+| Voice | ElevenLabs |
 | Email (optional) | Resend |
 
 ## Design decisions
@@ -55,8 +56,8 @@ Full diagrams, the component table, and costs are in [`docs/architecture.html`](
 - [x] 1. Tools: editor, Git, Claude Code; create the Next.js app; push to GitHub
 - [x] 2. Connect to Vercel and deploy the empty app
 - [x] 3. SaaS site: landing page, sign-up flow, headline dashboard, settings (preferences saved in the browser)
-- [ ] 4. Accounts: Supabase email-link sign-in, preferences saved to the database
-- [ ] 5. One briefing by hand: headlines → script → MP3
+- [x] 4. Accounts: Supabase email-link sign-in, preferences saved to the database
+- [x] 5. One briefing on demand: headlines → script → MP3
 - [ ] 6. Daily cron, Blob storage, podcast feed
 - [ ] 7. Polish: voice, script style, email
 
@@ -74,7 +75,7 @@ Copy the environment variables below into `.env.local`, run `supabase/migrations
 ```
 NEXT_PUBLIC_SUPABASE_URL=              # Supabase project URL
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=  # safe in the browser; Row Level Security protects data
-OPENAI_API_KEY=        # or your chosen TTS provider's key
+ELEVENLABS_API_KEY=                    # secret, server only
 CRON_SECRET=           # random string; only Vercel Cron can trigger /api/generate
 ANTHROPIC_API_KEY=     # later, for AI-written scripts
 ```
