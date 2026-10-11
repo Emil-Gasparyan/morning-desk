@@ -1,43 +1,27 @@
 import { cacheLife } from "next/cache";
-
-// Google News sections. "TOP" is the main front page; the rest are topic feeds.
-export const TOPICS = {
-  TOP: "Top stories",
-  WORLD: "World",
-  BUSINESS: "Business",
-  TECHNOLOGY: "Technology",
-  SCIENCE: "Science",
-  HEALTH: "Health",
-  SPORTS: "Sports",
-  ENTERTAINMENT: "Entertainment",
-} as const;
-
-export type Topic = keyof typeof TOPICS;
-
-export type Headline = {
-  title: string;
-  source: string;
-  link: string;
-  published: string; // ISO date
-};
+import { isSection, type Headline, type TopicId } from "./topics";
 
 const LOCALE = "hl=en-US&gl=US&ceid=US:en";
 
-function feedUrl(topic: Topic) {
-  return topic === "TOP"
-    ? `https://news.google.com/rss?${LOCALE}`
-    : `https://news.google.com/rss/headlines/section/topic/${topic}?${LOCALE}`;
+function feedUrl(id: TopicId) {
+  if (id === "TOP") return `https://news.google.com/rss?${LOCALE}`;
+  if (isSection(id)) {
+    return `https://news.google.com/rss/headlines/section/topic/${id}?${LOCALE}`;
+  }
+  // Custom topic: search the last day of news for these words.
+  const query = encodeURIComponent(`${id.slice(2)} when:1d`);
+  return `https://news.google.com/rss/search?q=${query}&${LOCALE}`;
 }
 
-// Fetch the latest headlines for one topic. Cached for about an hour,
-// so visiting the page doesn't hit Google News every time.
-export async function getHeadlines(topic: Topic, limit = 8): Promise<Headline[]> {
+// Fetch every headline in one topic's feed. Cached for about an hour,
+// so visitors don't hit Google News on every page load.
+export async function getHeadlines(id: TopicId): Promise<Headline[]> {
   "use cache";
   cacheLife("hours");
 
-  const res = await fetch(feedUrl(topic));
-  if (!res.ok) throw new Error(`Google News returned ${res.status} for ${topic}`);
-  return parseRss(await res.text()).slice(0, limit);
+  const res = await fetch(feedUrl(id));
+  if (!res.ok) throw new Error(`Google News returned ${res.status} for ${id}`);
+  return parseRss(await res.text());
 }
 
 function parseRss(xml: string): Headline[] {
@@ -53,10 +37,19 @@ function parseRss(xml: string): Headline[] {
     return {
       title,
       source,
+      sourceDomain: domainOf(item.match(/<source url="([^"]+)"/)?.[1] ?? ""),
       link: tag(item, "link"),
       published: isNaN(date.getTime()) ? "" : date.toISOString(),
     };
   });
+}
+
+function domainOf(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
 }
 
 function tag(xml: string, name: string) {

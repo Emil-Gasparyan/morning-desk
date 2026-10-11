@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fbfaf8;
+  --foreground: #16130f;
 }
 
 @theme inline {
@@ -10,12 +10,13 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-instrument-serif);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0d0c0b;
+    --foreground: #f1eeea;
   }
 }
 
@@ -23,4 +24,23 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Soft sunrise glow used behind the hero and app header. */
+.sunrise {
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgb(251 146 60 / 0.18), transparent 70%),
+    radial-gradient(40% 40% at 85% 10%, rgb(244 63 94 / 0.10), transparent 70%);
+}
+
+@keyframes bar {
+  0%, 100% { transform: scaleY(0.35); }
+  50% { transform: scaleY(1); }
+}
+.wave span {
+  transform-origin: bottom;
+  animation: bar 1.1s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wave span { animation: none; }
 }

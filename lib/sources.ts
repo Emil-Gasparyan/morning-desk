@@ -1,0 +1,35 @@
+// News outlets people can pick as preferred sources. Matched against the
+// outlet's web address in each Google News headline.
+export const SOURCES = [
+  { domain: "apnews.com", name: "AP News", group: "Wire & public" },
+  { domain: "reuters.com", name: "Reuters", group: "Wire & public" },
+  { domain: "npr.org", name: "NPR", group: "Wire & public" },
+  { domain: "bbc.com", name: "BBC", group: "Wire & public" },
+  { domain: "pbs.org", name: "PBS", group: "Wire & public" },
+  { domain: "nytimes.com", name: "The New York Times", group: "Newspapers" },
+  { domain: "washingtonpost.com", name: "The Washington Post", group: "Newspapers" },
+  { domain: "wsj.com", name: "The Wall Street Journal", group: "Newspapers" },
+  { domain: "theguardian.com", name: "The Guardian", group: "Newspapers" },
+  { domain: "usatoday.com", name: "USA Today", group: "Newspapers" },
+  { domain: "cnn.com", name: "CNN", group: "TV news" },
+  { domain: "nbcnews.com", name: "NBC News", group: "TV news" },
+  { domain: "cbsnews.com", name: "CBS News", group: "TV news" },
+  { domain: "abcnews.go.com", name: "ABC News", group: "TV news" },
+  { domain: "foxnews.com", name: "Fox News", group: "TV news" },
+  { domain: "aljazeera.com", name: "Al Jazeera", group: "TV news" },
+  { domain: "bloomberg.com", name: "Bloomberg", group: "Business" },
+  { domain: "cnbc.com", name: "CNBC", group: "Business" },
+  { domain: "ft.com", name: "Financial Times", group: "Business" },
+  { domain: "economist.com", name: "The Economist", group: "Business" },
+  { domain: "axios.com", name: "Axios", group: "Politics" },
+  { domain: "politico.com", name: "Politico", group: "Politics" },
+  { domain: "thehill.com", name: "The Hill", group: "Politics" },
+  { domain: "theverge.com", name: "The Verge", group: "Tech & science" },
+  { domain: "techcrunch.com", name: "TechCrunch", group: "Tech & science" },
+  { domain: "wired.com", name: "Wired", group: "Tech & science" },
+  { domain: "arstechnica.com", name: "Ars Technica", group: "Tech & science" },
+  { domain: "espn.com", name: "ESPN", group: "Sports" },
+  { domain: "theathletic.com", name: "The Athletic", group: "Sports" },
+] as const;
+
+export const SOURCE_GROUPS = [...new Set(SOURCES.map((s) => s.group))];
