@@ -1,0 +1,58 @@
+# Morning Desk: notes for Claude
+
+Emil's project. He's newer to coding and prefers direct, no-hedging explanations. Explain what each step does in plain words, and say which commands to run when he needs to run them himself.
+
+## What we're building
+
+A daily news briefing read aloud. Emil picks topics, a time and a voice. Each morning the app fetches headlines, turns them into a short radio-style script, converts it to an MP3, and delivers it.
+
+A prototype already exists (single-file `morning-desk.html`, not in this repo yet). It reads Google News headlines with the browser's built-in voice, but only while the tab is open, and it has no AI summary.
+
+Full architecture, diagrams and component costs: `docs/architecture.html`. Overview and build plan: `README.md`.
+
+## Architecture
+
+- **Build:** Emil + Claude Code → Git → GitHub (`emilgasparyan-droid/morning-desk`, private) → Vercel auto-deploys on push.
+- **Daily run (Next.js on Vercel):** Vercel Cron (~5 AM) → `/api/generate`:
+  1. Read settings (Supabase)
+  2. Fetch headlines (Google News RSS, fetched server-side, no CORS relays needed)
+  3. Write the script (`lib/summarize.ts`)
+  4. Text-to-speech → MP3 (`lib/speak.ts`; OpenAI, ElevenLabs or Google, not chosen yet)
+  5. Save the MP3 (Vercel Blob)
+- **Delivery:** web app player at Emil's chosen time, private podcast feed (`/feed.xml`), optional email (Resend).
+
+## Decisions and constraints
+
+- **No Claude API yet.** Emil wants to delay it. Until he says otherwise, `lib/summarize.ts` produces a plain headline read-out with no LLM call. Keep it behind one function so Claude API scripts are a one-file swap later.
+- **Vercel Hobby (free, personal use only).** Cron runs once a day and can fire anywhere within its hour, so generate early and play later. Don't design anything that needs exact-minute server timing.
+- **Storage:** delete MP3s older than ~30 days in the daily run to stay under Blob's 1 GB.
+- **Secrets** live only in `.env.local` (gitignored) and Vercel Environment Variables, never in code or commits. Never export `ANTHROPIC_API_KEY` in the shell: Claude Code would bill the API instead of Emil's Pro plan.
+- **Env vars:** `SUPABASE_URL`, `SUPABASE_KEY`, TTS key (e.g. `OPENAI_API_KEY`), `CRON_SECRET`; `ANTHROPIC_API_KEY` later.
+- `/api/generate` must reject requests that don't carry `CRON_SECRET`.
+
+## Build order (update the checkboxes in README.md as steps finish)
+
+1. Tools: editor, Git, Claude Code; create the Next.js app; push to GitHub ← **next**
+2. Connect the repo to Vercel and deploy the empty app
+3. One briefing by hand: headlines → script → MP3
+4. Supabase and the settings screen (port the prototype's settings UI)
+5. Daily cron, Blob storage, podcast feed
+6. Polish: voice, script style, email
+
+## Planned layout
+
+```
+app/page.tsx              settings + player
+app/api/generate/route.ts daily briefing function
+app/feed.xml/route.ts     podcast feed
+lib/news.ts               fetch headlines
+lib/summarize.ts          build the script
+lib/speak.ts              text-to-speech
+vercel.json               cron schedule
+```
+
+## Working style
+
+- Make small, working steps and commit after each one with a clear message.
+- Explain before installing new services or anything that costs money.
+- This repo is part of Emil's project portfolio, so keep the README accurate as things change.
