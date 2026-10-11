@@ -105,6 +105,15 @@ export async function sendSignInLink(email: string, next = "/briefing"): Promise
   return error.message || "Couldn't send the email. Please try again.";
 }
 
+// Sign in with the code from the email instead of the link. Works in any
+// browser or app, unlike the link, which must be opened where it was requested.
+export async function verifySignInCode(email: string, code: string): Promise<string | null> {
+  const { error } = await supabase().auth.verifyOtp({ email, token: code, type: "email" });
+  if (!error) return null;
+  if (error.status === 429) return "Too many attempts. Please wait a few minutes and try again.";
+  return "That code didn't work. Check it, or request a new email.";
+}
+
 export async function signOut() {
   await supabase().auth.signOut();
   writePending(null);
