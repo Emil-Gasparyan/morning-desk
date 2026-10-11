@@ -12,7 +12,8 @@ Live: https://morning-desk-opal.vercel.app
 - **Preferred sources:** pick outlets you trust. Their recent stories come first, or turn on "only my sources".
 - **Schedule:** choose the time and days you listen. Your briefing is ready before then.
 - **Voice and length:** pick a voice style and a 3, 5 or 10 minute briefing.
-- **Coming:** sign-in by email link, spoken MP3 briefings, private podcast feed, email delivery.
+- **Accounts:** sign in with a link sent to your email, no password. Preferences follow you to any device.
+- **Coming:** spoken MP3 briefings, private podcast feed, email delivery.
 
 ## How it works
 
@@ -66,13 +67,13 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:3000.
+Copy the environment variables below into `.env.local`, run `supabase/migrations/0001_profiles.sql` once in the Supabase SQL Editor, then open http://localhost:3000.
 
 ## Environment variables
 
 ```
-SUPABASE_URL=
-SUPABASE_KEY=
+NEXT_PUBLIC_SUPABASE_URL=              # Supabase project URL
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=  # safe in the browser; Row Level Security protects data
 OPENAI_API_KEY=        # or your chosen TTS provider's key
 CRON_SECRET=           # random string; only Vercel Cron can trigger /api/generate
 ANTHROPIC_API_KEY=     # later, for AI-written scripts

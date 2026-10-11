@@ -1,11 +1,10 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { supabase } from "./supabase/client";
 import type { TopicId } from "./topics";
 
-// Everything a person chooses during sign-up. For now it's saved in the
-// browser (localStorage); step 4 moves it to Supabase so it follows the
-// account. Only this file needs to change for that swap.
+// Everything a person chooses during sign-up.
 export type Preferences = {
   name: string;
   topics: TopicId[];
@@ -38,59 +37,136 @@ export const DEFAULT_PREFERENCES: Preferences = {
   length: 5,
 };
 
-const KEY = "morningdesk:preferences:v1";
-const listeners = new Set<() => void>();
-let cachedRaw: string | null = null;
-let cachedValue: Preferences | null = null;
+// Where the person stands:
+// - loading: still checking whether they're signed in
+// - signed-out: not signed in; `pending` holds choices made during sign-up,
+//   kept in this browser until the email link is clicked
+// - signed-in: `prefs` comes from their Supabase profile (null = not set up yet)
+export type Account =
+  | { status: "loading" }
+  | { status: "signed-out"; pending: Preferences | null }
+  | { status: "signed-in"; userId: string; email: string; prefs: Preferences | null };
 
-function read(): Preferences | null {
-  let raw: string | null = null;
-  try {
-    raw = localStorage.getItem(KEY);
-  } catch {
-    return null;
-  }
-  if (raw !== cachedRaw) {
-    cachedRaw = raw;
-    try {
-      cachedValue = raw ? { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) } : null;
-    } catch {
-      cachedValue = null;
+const LOADING: Account = { status: "loading" };
+const PENDING_KEY = "morningdesk:pending-preferences:v1";
+
+let state: Account = LOADING;
+let started = false;
+const listeners = new Set<() => void>();
+
+function set(next: Account) {
+  state = next;
+  listeners.forEach((l) => l());
+}
+
+function start() {
+  if (started) return;
+  started = true;
+  supabase().auth.onAuthStateChange((_event, session) => {
+    // Supabase advises not to call it again inside this callback, so defer.
+    setTimeout(() => {
+      if (!session) {
+        set({ status: "signed-out", pending: readPending() });
+      } else if (state.status !== "signed-in" || state.userId !== session.user.id) {
+        void loadProfile(session.user.id, session.user.email ?? "");
+      }
+    }, 0);
+  });
+}
+
+async function loadProfile(userId: string, email: string) {
+  const { data, error } = await supabase()
+    .from("profiles")
+    .select("preferences")
+    .eq("id", userId)
+    .maybeSingle();
+
+  let prefs: Preferences | null = data ? { ...DEFAULT_PREFERENCES, ...data.preferences } : null;
+
+  // First sign-in after sign-up: save the choices they made before the email link.
+  const pending = readPending();
+  if (!error && !prefs && pending) {
+    const saved = await supabase().from("profiles").insert({ id: userId, preferences: pending });
+    if (!saved.error) {
+      prefs = pending;
+      writePending(null);
     }
   }
-  return cachedValue;
+
+  set({ status: "signed-in", userId, email, prefs });
 }
 
-export function savePreferences(prefs: Preferences) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(prefs));
-  } catch {
-    // Storage blocked (private window); preferences just won't persist.
+// Save preferences: to the profile when signed in, otherwise in this browser
+// until sign-in finishes. Returns an error message if saving failed.
+export async function savePreferences(prefs: Preferences): Promise<string | null> {
+  if (state.status === "signed-in") {
+    const { error } = await supabase()
+      .from("profiles")
+      .upsert({ id: state.userId, preferences: prefs });
+    if (error) return "Couldn't save your preferences. Please try again.";
+    set({ ...state, prefs });
+    return null;
   }
-  listeners.forEach((l) => l());
+  writePending(prefs);
+  set({ status: "signed-out", pending: prefs });
+  return null;
 }
 
-export function clearPreferences() {
-  try {
-    localStorage.removeItem(KEY);
-  } catch {}
-  listeners.forEach((l) => l());
+// Delete the person's preferences so they can set up again.
+export async function clearPreferences(): Promise<string | null> {
+  writePending(null);
+  if (state.status === "signed-in") {
+    const { error } = await supabase().from("profiles").delete().eq("id", state.userId);
+    if (error) return "Couldn't reset your preferences. Please try again.";
+    set({ ...state, prefs: null });
+  }
+  return null;
+}
+
+// Email a sign-in link. `next` is where to land after clicking it.
+export async function sendSignInLink(email: string, next = "/briefing"): Promise<string | null> {
+  const redirect = new URL("/auth/callback", window.location.origin);
+  redirect.searchParams.set("next", next);
+  const { error } = await supabase().auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirect.toString() },
+  });
+  if (!error) return null;
+  if (error.status === 429) return "Too many sign-in emails. Please wait a few minutes and try again.";
+  return error.message || "Couldn't send the email. Please try again.";
+}
+
+export async function signOut() {
+  await supabase().auth.signOut();
+  writePending(null);
 }
 
 function subscribe(listener: () => void) {
+  start();
   listeners.add(listener);
-  const onStorage = (e: StorageEvent) => e.key === KEY && listener();
-  window.addEventListener("storage", onStorage);
-  return () => {
-    listeners.delete(listener);
-    window.removeEventListener("storage", onStorage);
-  };
+  return () => listeners.delete(listener);
 }
 
-// Returns the saved preferences, null if the person hasn't signed up yet,
-// or undefined while the page is still loading in the browser.
-export function usePreferences(): Preferences | null | undefined {
-  return useSyncExternalStore(subscribe, read, () => undefined);
+export function useAccount(): Account {
+  return useSyncExternalStore(subscribe, () => state, () => LOADING);
+}
+
+function readPending(): Preferences | null {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    return raw ? { ...DEFAULT_PREFERENCES, ...JSON.parse(raw) } : null;
+  } catch {
+    return null;
+  }
+}
+
+function writePending(prefs: Preferences | null) {
+  try {
+    if (prefs) localStorage.setItem(PENDING_KEY, JSON.stringify(prefs));
+    else localStorage.removeItem(PENDING_KEY);
+  } catch {
+    // Storage blocked (private window): choices just won't carry over.
+  }
 }
 
 export function detectTimeZone() {

@@ -16,17 +16,23 @@ function SettingsForm({ saved }: { saved: Preferences }) {
   const router = useRouter();
   const [prefs, setPrefs] = useState(saved);
   const [justSaved, setJustSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const update = (patch: Partial<Preferences>) => {
     setPrefs((p) => ({ ...p, ...patch }));
     setJustSaved(false);
+    setError(null);
   };
 
   const dirty = JSON.stringify(prefs) !== JSON.stringify(saved);
   const valid = prefs.name.trim().length > 0 && prefs.topics.length > 0;
 
-  function save() {
-    savePreferences({ ...prefs, name: prefs.name.trim() });
-    setJustSaved(true);
+  async function save() {
+    setSaving(true);
+    const problem = await savePreferences({ ...prefs, name: prefs.name.trim() });
+    setSaving(false);
+    if (problem) setError(problem);
+    else setJustSaved(true);
   }
 
   return (
@@ -64,13 +70,14 @@ function SettingsForm({ saved }: { saved: Preferences }) {
           <VoiceFields prefs={prefs} onChange={update} />
         </Section>
 
-        <Section title="Start over" description="Clear your preferences from this browser and set up again.">
+        <Section title="Start over" description="Delete your preferences and go through set-up again.">
           <Button
             variant="outline"
-            onClick={() => {
-              if (confirm("Clear all your preferences from this browser?")) {
-                clearPreferences();
-                router.push("/");
+            onClick={async () => {
+              if (confirm("Delete your preferences and start set-up again?")) {
+                const problem = await clearPreferences();
+                if (problem) setError(problem);
+                else router.push("/onboarding");
               }
             }}
           >
@@ -81,12 +88,14 @@ function SettingsForm({ saved }: { saved: Preferences }) {
 
       <div
         className={`fixed inset-x-0 bottom-0 z-30 border-t border-zinc-900/5 bg-background/90 backdrop-blur transition-transform dark:border-white/10 ${
-          dirty || justSaved ? "translate-y-0" : "translate-y-full"
+          dirty || justSaved || error ? "translate-y-0" : "translate-y-full"
         }`}
       >
         <div className="mx-auto flex h-18 max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <p className="text-sm text-zinc-600 dark:text-zinc-400" aria-live="polite">
-            {justSaved && !dirty ? (
+            {error ? (
+              <span className="text-rose-600 dark:text-rose-400">{error}</span>
+            ) : justSaved && !dirty ? (
               <span className="inline-flex items-center gap-1.5 text-emerald-700 dark:text-emerald-400">
                 <Check className="size-4" aria-hidden /> Saved
               </span>
@@ -102,8 +111,8 @@ function SettingsForm({ saved }: { saved: Preferences }) {
                 Discard
               </Button>
             )}
-            <Button variant="brand" onClick={save} disabled={!dirty || !valid}>
-              Save changes
+            <Button variant="brand" onClick={() => void save()} disabled={!dirty || !valid || saving}>
+              {saving ? "Saving…" : "Save changes"}
             </Button>
           </div>
         </div>

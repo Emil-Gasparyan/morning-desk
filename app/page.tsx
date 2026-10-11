@@ -8,7 +8,7 @@ import {
   Sparkles,
   SlidersHorizontal,
 } from "lucide-react";
-import { HeaderCta } from "@/components/header-cta";
+import { HeaderCta, SignInLink } from "@/components/header-cta";
 import { Card, Logo } from "@/components/ui";
 import { getHeadlines } from "@/lib/news";
 
@@ -25,6 +25,7 @@ export default function Landing() {
             <a href="#features" className="hidden rounded-full px-3 py-2 text-sm text-zinc-600 hover:text-zinc-900 sm:block dark:text-zinc-400 dark:hover:text-white">
               Features
             </a>
+            <SignInLink />
             <HeaderCta />
           </div>
         </nav>
