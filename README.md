@@ -2,7 +2,7 @@
 
 A daily news briefing read aloud by AI. Pick your topics and a time, and each morning you get a short, radio-style spoken summary of the news.
 
-**Status:** Prototype done · Architecture planned · Next.js app created and connected to Vercel (step 2 of 6)
+**Status:** Prototype done · Architecture planned · Empty Next.js app live on Vercel (starting step 3 of 6)
 
 ## How it works
 
@@ -41,8 +41,8 @@ Full diagrams, the component table, and costs are in [`docs/architecture.html`](
 - [x] Prototype: single-file browser app that reads headlines with the browser's built-in voice
 - [x] Architecture and cost plan
 - [x] 1. Tools: editor, Git, Claude Code; create the Next.js app; push to GitHub
-- [ ] 2. Connect to Vercel and deploy the empty app
-- [ ] 3. One briefing by hand: headlines → Claude script → MP3
+- [x] 2. Connect to Vercel and deploy the empty app
+- [ ] 3. One briefing by hand: headlines → script → MP3 (plain headline read-out first; Claude API later)
 - [ ] 4. Supabase and the settings screen
 - [ ] 5. Daily cron, Blob storage, podcast feed
 - [ ] 6. Polish: voice, script style, email
