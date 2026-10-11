@@ -1,0 +1,396 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Morning Desk Architecture</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: one reading column; two large diagrams (build lane, morning run) break wider; reference tables below */
+:root {
+  --bg: #f5f6f4;
+  --surface: #ffffff;
+  --ink: #18201d;
+  --muted: #5b6862;
+  --line: #d6dcd8;
+  --build: #2f5fa8;
+  --build-soft: #e6edf8;
+  --run: #1f7a5c;
+  --run-soft: #e2f1ea;
+  --warn: #a8571b;
+  --warn-soft: #fbeedf;
+  --display: "Newsreader", Georgia, serif;
+  --body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111614; --surface: #19201d; --ink: #e6ebe8; --muted: #9caaa3; --line: #2d3733;
+    --build: #86aef0; --build-soft: #1c2638; --run: #6fd0aa; --run-soft: #17302a; --warn: #f0a868; --warn-soft: #33241a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111614; --surface: #19201d; --ink: #e6ebe8; --muted: #9caaa3; --line: #2d3733;
+  --build: #86aef0; --build-soft: #1c2638; --run: #6fd0aa; --run-soft: #17302a; --warn: #f0a868; --warn-soft: #33241a;
+  color-scheme: dark;
+}
+body { background: var(--bg); color: var(--ink); font: 16px/1.6 var(--body); }
+main { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; display: grid; gap: 56px; }
+.prose { max-width: 68ch; }
+h1 { font: 600 clamp(2rem, 4.5vw, 2.8rem)/1.1 var(--display); margin: 0 0 12px; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font: 600 1.7rem/1.2 var(--display); margin: 0 0 8px; text-wrap: balance; }
+h3 { font: 600 1rem var(--body); margin: 0 0 4px; }
+p { margin: 0 0 12px; }
+.lede { font-size: 1.12rem; color: var(--muted); }
+.eyebrow { font: 600 0.72rem var(--body); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px; }
+.eyebrow.b { color: var(--build); } .eyebrow.r { color: var(--run); } .eyebrow.m { color: var(--muted); }
+code { font: 500 0.86em var(--mono); background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; }
+a { color: var(--build); }
+
+.lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+@media (max-width: 680px) { .lanes { grid-template-columns: 1fr; } }
+.lane { border-radius: 10px; padding: 16px 18px; border: 1px solid var(--line); background: var(--surface); }
+.lane.b { border-top: 3px solid var(--build); } .lane.r { border-top: 3px solid var(--run); }
+.lane p { margin: 0; color: var(--muted); font-size: 0.95rem; }
+
+figure { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; }
+.scroll { overflow-x: auto; }
+figure svg { display: block; width: 100%; min-width: 760px; height: auto; color: var(--ink); font-family: var(--body); }
+figcaption { margin-top: 14px; color: var(--muted); font-size: 0.92rem; max-width: 80ch; }
+
+.callout { border-radius: 10px; padding: 16px 18px; background: var(--warn-soft); border: 1px solid var(--warn); max-width: 80ch; }
+.callout h3 { color: var(--warn); }
+.callout p:last-child { margin: 0; }
+
+.timeline { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 0; max-width: 760px; }
+.timeline li { display: grid; grid-template-columns: 7.5rem minmax(0,1fr); gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.timeline .t { font: 500 0.9rem var(--mono); color: var(--run); font-variant-numeric: tabular-nums; }
+.timeline p { margin: 0; }
+.timeline .who { color: var(--muted); font-size: 0.88rem; }
+
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin-top: 16px; }
+table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 0.92rem; }
+th, td { text-align: left; padding: 11px 14px; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font: 600 0.72rem var(--body); text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { font-weight: 600; white-space: nowrap; }
+.tag { display: inline-block; font: 600 0.7rem var(--body); text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 4px; }
+.tag.b { background: var(--build-soft); color: var(--build); } .tag.r { background: var(--run-soft); color: var(--run); }
+.cost { color: var(--muted); white-space: nowrap; }
+
+.two { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 24px; align-items: start; }
+@media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+pre { margin: 12px 0 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; font: 500 0.82rem/1.7 var(--mono); }
+pre .c { color: var(--muted); }
+.keys { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+.keys li { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 0.92rem; }
+.keys code { background: var(--bg); }
+
+.phases { counter-reset: p; list-style: none; padding: 0; margin: 16px 0 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.phases li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: 0.92rem; }
+.phases li::before { counter-increment: p; content: "Step " counter(p); display: block; font: 600 0.7rem var(--body); text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 4px; }
+.phases strong { display: block; margin-bottom: 4px; }
+.sources { font-size: 0.85rem; color: var(--muted); }
+</style>
+
+<main>
+  <header class="prose">
+    <div class="eyebrow m">Voice AI project · System architecture</div>
+    <h1>How Morning Desk is built and how it runs</h1>
+    <p class="lede">Every piece of the daily news briefing app, from the editor where the code is written to the voice that reads your headlines each morning.</p>
+    <p>The system has two separate halves. It helps to keep them apart in your head, because the tools in one half never touch the other.</p>
+    <div class="lanes">
+      <div class="lane b"><div class="eyebrow b">Half 1 · Build and ship</div><h3>Happens when you change the app</h3><p>You and Claude Code write code in Cursor or VS Code. Git records it, GitHub stores it online, and Vercel turns it into a live website.</p></div>
+      <div class="lane r"><div class="eyebrow r">Half 2 · The daily run</div><h3>Happens every morning on its own</h3><p>Vercel wakes the app up, it gathers headlines, Claude writes a script, a voice service records it, and you hear it at your time.</p></div>
+    </div>
+  </header>
+
+  <!-- BUILD PIPELINE -->
+  <section>
+    <div class="prose">
+      <div class="eyebrow b">Half 1</div>
+      <h2>From your editor to a live website</h2>
+      <p>You describe what you want. Claude Code edits the files in your project folder. Each time you're happy with a change you <em>commit</em> it with Git and <em>push</em> it to GitHub. Vercel notices the push and publishes the new version within a minute or two.</p>
+    </div>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1000 330" role="img" aria-label="Build pipeline: you and Claude Code edit code in Cursor or VS Code, Git commits it locally, it is pushed to GitHub, Vercel deploys it automatically, and the live app is served at a web address. Secret keys live in a local .env file and in Vercel environment variables, never in Git.">
+        <defs>
+          <marker id="ab" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--build)"/></marker>
+          <marker id="am" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker>
+        </defs>
+        <!-- zones -->
+        <text x="20" y="22" font-size="11" font-weight="600" letter-spacing="1.5" fill="var(--muted)">ON YOUR COMPUTER</text>
+        <rect x="10" y="32" width="380" height="200" rx="10" fill="none" stroke="var(--line)" stroke-dasharray="4 4"/>
+        <text x="420" y="22" font-size="11" font-weight="600" letter-spacing="1.5" fill="var(--muted)">IN THE CLOUD</text>
+        <rect x="410" y="32" width="580" height="200" rx="10" fill="none" stroke="var(--line)" stroke-dasharray="4 4"/>
+
+        <!-- you + claude code -->
+        <rect x="30" y="48" width="160" height="56" rx="8" fill="var(--build-soft)" stroke="var(--build)"/>
+        <text x="110" y="72" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">You + Claude Code</text>
+        <text x="110" y="90" text-anchor="middle" font-size="11" fill="var(--muted)">describe, review, approve</text>
+        <line x1="110" y1="104" x2="110" y2="136" stroke="var(--build)" stroke-width="1.6" marker-end="url(#ab)"/>
+        <text x="118" y="125" font-size="11" fill="var(--muted)">edits files</text>
+
+        <!-- row -->
+        <rect x="30" y="140" width="160" height="72" rx="8" fill="var(--surface)" stroke="currentColor"/>
+        <text x="110" y="168" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Cursor / VS Code</text>
+        <text x="110" y="186" text-anchor="middle" font-size="11" fill="var(--muted)">project folder</text>
+        <text x="110" y="200" text-anchor="middle" font-size="11" fill="var(--muted)">npm run dev to test</text>
+
+        <rect x="220" y="140" width="150" height="72" rx="8" fill="var(--surface)" stroke="currentColor"/>
+        <text x="295" y="168" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Git</text>
+        <text x="295" y="186" text-anchor="middle" font-size="11" fill="var(--muted)">history of every</text>
+        <text x="295" y="200" text-anchor="middle" font-size="11" fill="var(--muted)">saved change</text>
+
+        <rect x="430" y="140" width="150" height="72" rx="8" fill="var(--surface)" stroke="currentColor"/>
+        <text x="505" y="168" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">GitHub</text>
+        <text x="505" y="186" text-anchor="middle" font-size="11" fill="var(--muted)">online copy of</text>
+        <text x="505" y="200" text-anchor="middle" font-size="11" fill="var(--muted)">the code</text>
+
+        <rect x="630" y="140" width="150" height="72" rx="8" fill="var(--surface)" stroke="currentColor"/>
+        <text x="705" y="168" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Vercel</text>
+        <text x="705" y="186" text-anchor="middle" font-size="11" fill="var(--muted)">builds and</text>
+        <text x="705" y="200" text-anchor="middle" font-size="11" fill="var(--muted)">hosts the app</text>
+
+        <rect x="830" y="140" width="145" height="72" rx="8" fill="var(--build-soft)" stroke="var(--build)"/>
+        <text x="902" y="168" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Live app</text>
+        <text x="902" y="186" text-anchor="middle" font-size="11" fill="var(--muted)">morning-desk</text>
+        <text x="902" y="200" text-anchor="middle" font-size="11" fill="var(--muted)">.vercel.app</text>
+
+        <line x1="190" y1="176" x2="216" y2="176" stroke="var(--build)" stroke-width="1.6" marker-end="url(#ab)"/>
+        <text x="205" y="132" text-anchor="middle" font-size="11" fill="var(--build)">commit</text>
+        <line x1="370" y1="176" x2="426" y2="176" stroke="var(--build)" stroke-width="1.6" marker-end="url(#ab)"/>
+        <text x="398" y="168" text-anchor="middle" font-size="11" fill="var(--build)">push</text>
+        <line x1="580" y1="176" x2="626" y2="176" stroke="var(--build)" stroke-width="1.6" marker-end="url(#ab)"/>
+        <text x="604" y="168" text-anchor="middle" font-size="11" fill="var(--build)">deploy</text>
+        <line x1="780" y1="176" x2="826" y2="176" stroke="var(--build)" stroke-width="1.6" marker-end="url(#ab)"/>
+        <text x="804" y="168" text-anchor="middle" font-size="11" fill="var(--build)">serves</text>
+
+        <!-- secrets -->
+        <rect x="30" y="260" width="250" height="52" rx="8" fill="var(--warn-soft)" stroke="var(--warn)" stroke-dasharray="5 3"/>
+        <text x="155" y="281" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">.env.local (secret keys)</text>
+        <text x="155" y="298" text-anchor="middle" font-size="11" fill="var(--muted)">listed in .gitignore, never pushed</text>
+        <line x1="110" y1="256" x2="110" y2="214" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#am)"/>
+
+        <rect x="580" y="260" width="250" height="52" rx="8" fill="var(--warn-soft)" stroke="var(--warn)" stroke-dasharray="5 3"/>
+        <text x="705" y="281" text-anchor="middle" font-size="12" font-weight="600" fill="currentColor">Environment Variables</text>
+        <text x="705" y="298" text-anchor="middle" font-size="11" fill="var(--muted)">same keys, typed into Vercel</text>
+        <line x1="705" y1="256" x2="705" y2="214" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#am)"/>
+      </svg>
+      </div>
+      <figcaption>Code travels left to right. Secret keys (Claude, voice service, database) take a separate path: a local file for testing and Vercel's settings page for the live app. Keeping them out of Git means nobody who sees your code can spend your money.</figcaption>
+    </figure>
+  </section>
+
+  <!-- DAILY RUN -->
+  <section>
+    <div class="prose">
+      <div class="eyebrow r">Half 2</div>
+      <h2>What happens every morning</h2>
+      <p>No one has to have anything open. A scheduled job on Vercel calls one function in your app, and that function does five things in order. The finished MP3 is then handed to whichever way you like to listen.</p>
+    </div>
+    <figure>
+      <div class="scroll">
+      <svg viewBox="0 0 1000 600" role="img" aria-label="Daily run: Vercel Cron triggers the briefing function once a day. The function reads your settings from Supabase, fetches headlines from Google News RSS, sends them to the Claude API to write a script, sends the script to a text-to-speech service to get an MP3, and saves the MP3 in Vercel Blob. The latest briefing is then delivered through the web app in your browser, a private podcast feed, or an optional email.">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--run)"/></marker>
+          <marker id="am2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker>
+        </defs>
+
+        <text x="40" y="22" font-size="11" font-weight="600" letter-spacing="1.5" fill="var(--muted)">TRIGGER</text>
+        <rect x="40" y="36" width="190" height="70" rx="8" fill="var(--run-soft)" stroke="var(--run)"/>
+        <text x="135" y="64" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Vercel Cron</text>
+        <text x="135" y="82" text-anchor="middle" font-size="11" fill="var(--muted)">once a day, around 5 AM</text>
+        <line x1="230" y1="71" x2="376" y2="71" stroke="var(--run)" stroke-width="1.8" marker-end="url(#ar)"/>
+        <text x="303" y="63" text-anchor="middle" font-size="11" fill="var(--run)">calls /api/generate</text>
+
+        <rect x="380" y="30" width="240" height="84" rx="10" fill="var(--surface)" stroke="currentColor" stroke-width="1.6"/>
+        <text x="500" y="62" text-anchor="middle" font-size="14" font-weight="600" fill="currentColor">Briefing function</text>
+        <text x="500" y="81" text-anchor="middle" font-size="11" fill="var(--muted)">Next.js API route on Vercel</text>
+        <text x="500" y="97" text-anchor="middle" font-size="11" fill="var(--muted)">runs steps 1 → 5 in order</text>
+
+        <text x="40" y="196" font-size="11" font-weight="600" letter-spacing="1.5" fill="var(--muted)">SERVICES IT CALLS</text>
+        <!-- arrows from function to services -->
+        <line x1="420" y1="114" x2="140" y2="206" stroke="var(--run)" stroke-width="1.4" marker-end="url(#ar)"/>
+        <line x1="460" y1="114" x2="316" y2="206" stroke="var(--run)" stroke-width="1.4" marker-end="url(#ar)"/>
+        <line x1="500" y1="114" x2="510" y2="206" stroke="var(--run)" stroke-width="1.4" marker-end="url(#ar)"/>
+        <line x1="540" y1="114" x2="704" y2="206" stroke="var(--run)" stroke-width="1.4" marker-end="url(#ar)"/>
+        <line x1="580" y1="114" x2="880" y2="206" stroke="var(--run)" stroke-width="1.4" marker-end="url(#ar)"/>
+
+        <g font-size="11">
+          <rect x="40" y="210" width="164" height="78" rx="8" fill="var(--surface)" stroke="currentColor"/>
+          <text x="54" y="232" font-weight="600" fill="var(--run)">1 · READ</text>
+          <text x="54" y="252" font-size="13" font-weight="600" fill="currentColor">Supabase</text>
+          <text x="54" y="270" fill="var(--muted)">your topics, time, voice</text>
+
+          <rect x="234" y="210" width="164" height="78" rx="8" fill="var(--surface)" stroke="currentColor"/>
+          <text x="248" y="232" font-weight="600" fill="var(--run)">2 · FETCH</text>
+          <text x="248" y="252" font-size="13" font-weight="600" fill="currentColor">Google News RSS</text>
+          <text x="248" y="270" fill="var(--muted)">today's headlines</text>
+
+          <rect x="428" y="210" width="164" height="78" rx="8" fill="var(--run-soft)" stroke="var(--run)" stroke-width="1.6"/>
+          <text x="442" y="232" font-weight="600" fill="var(--run)">3 · SUMMARIZE</text>
+          <text x="442" y="252" font-size="13" font-weight="600" fill="currentColor">Claude API</text>
+          <text x="442" y="270" fill="var(--muted)">writes a radio script</text>
+
+          <rect x="622" y="210" width="164" height="78" rx="8" fill="var(--surface)" stroke="currentColor"/>
+          <text x="636" y="232" font-weight="600" fill="var(--run)">4 · SPEAK</text>
+          <text x="636" y="252" font-size="13" font-weight="600" fill="currentColor">Text-to-speech</text>
+          <text x="636" y="270" fill="var(--muted)">script → MP3 audio</text>
+
+          <rect x="816" y="210" width="164" height="78" rx="8" fill="var(--surface)" stroke="currentColor"/>
+          <text x="830" y="232" font-weight="600" fill="var(--run)">5 · SAVE</text>
+          <text x="830" y="252" font-size="13" font-weight="600" fill="currentColor">Vercel Blob</text>
+          <text x="830" y="270" fill="var(--muted)">stores the MP3 file</text>
+        </g>
+
+        <!-- bus from blob to delivery -->
+        <line x1="898" y1="288" x2="898" y2="345" stroke="var(--run)" stroke-width="1.6"/>
+        <line x1="898" y1="345" x2="210" y2="345" stroke="var(--run)" stroke-width="1.6"/>
+        <text x="560" y="337" text-anchor="middle" font-size="11" fill="var(--run)">today's briefing (MP3 link + script)</text>
+        <line x1="210" y1="345" x2="210" y2="386" stroke="var(--run)" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="500" y1="345" x2="500" y2="386" stroke="var(--run)" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="790" y1="345" x2="790" y2="386" stroke="var(--run)" stroke-width="1.6" marker-end="url(#ar)"/>
+
+        <!-- settings arrow web app -> supabase -->
+        <line x1="120" y1="388" x2="120" y2="292" stroke="var(--muted)" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#am2)"/>
+        <text x="112" y="350" text-anchor="end" font-size="11" fill="var(--muted)">saves</text>
+        <text x="112" y="364" text-anchor="end" font-size="11" fill="var(--muted)">settings</text>
+
+        <text x="40" y="380" font-size="11" font-weight="600" letter-spacing="1.5" fill="var(--muted)">DELIVERY</text>
+        <rect x="90" y="390" width="240" height="70" rx="8" fill="var(--surface)" stroke="currentColor"/>
+        <text x="210" y="418" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Web app</text>
+        <text x="210" y="436" text-anchor="middle" font-size="11" fill="var(--muted)">settings page + player</text>
+
+        <rect x="380" y="390" width="240" height="70" rx="8" fill="var(--surface)" stroke="currentColor"/>
+        <text x="500" y="418" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Private podcast feed</text>
+        <text x="500" y="436" text-anchor="middle" font-size="11" fill="var(--muted)">/feed.xml with each day's MP3</text>
+
+        <rect x="670" y="390" width="240" height="70" rx="8" fill="var(--surface)" stroke="currentColor" stroke-dasharray="5 3"/>
+        <text x="790" y="418" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Email (optional)</text>
+        <text x="790" y="436" text-anchor="middle" font-size="11" fill="var(--muted)">link sent via Resend</text>
+
+        <line x1="210" y1="460" x2="210" y2="506" stroke="var(--run)" stroke-width="1.6" marker-end="url(#ar)"/>
+        <text x="218" y="488" font-size="11" fill="var(--run)">plays at your time</text>
+        <line x1="500" y1="460" x2="500" y2="506" stroke="var(--run)" stroke-width="1.6" marker-end="url(#ar)"/>
+        <text x="508" y="488" font-size="11" fill="var(--run)">auto-downloads</text>
+        <line x1="790" y1="460" x2="790" y2="506" stroke="var(--run)" stroke-width="1.6" marker-end="url(#ar)"/>
+        <text x="798" y="488" font-size="11" fill="var(--run)">tap to listen</text>
+
+        <text x="40" y="526" font-size="11" font-weight="600" letter-spacing="1.5" fill="var(--muted)">YOU</text>
+        <rect x="90" y="510" width="240" height="56" rx="28" fill="var(--run-soft)" stroke="var(--run)"/>
+        <text x="210" y="543" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Browser on your computer</text>
+        <rect x="380" y="510" width="240" height="56" rx="28" fill="var(--run-soft)" stroke="var(--run)"/>
+        <text x="500" y="543" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Podcast app (phone or Mac)</text>
+        <rect x="670" y="510" width="240" height="56" rx="28" fill="var(--run-soft)" stroke="var(--run)"/>
+        <text x="790" y="543" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Your inbox</text>
+      </svg>
+      </div>
+      <figcaption>The function is the only code that runs on its own. Claude is step 3 of five: it turns a list of headlines into a short, natural script. Claude doesn't produce the voice; a separate text-to-speech service does. The web app is also where you change your topics, which are saved back to Supabase for tomorrow's run.</figcaption>
+    </figure>
+  </section>
+
+  <section class="callout">
+    <h3>One limit that shapes the design</h3>
+    <p>On Vercel's free Hobby plan, a scheduled job can run only once a day, and Vercel may start it anywhere in that hour. A job set for 5:00 AM could run at 5:45.</p>
+    <p>That's why the app makes the briefing early and lets the delivery side handle exact timing. Your browser tab (the same trick as the prototype) or podcast app plays it at 7:30. If you later want a notification at the exact minute, the options are Vercel Pro, where jobs can run every minute, or a scheduling service such as Upstash QStash.</p>
+  </section>
+
+  <!-- TIMELINE -->
+  <section>
+    <div class="prose">
+      <div class="eyebrow r">A typical morning</div>
+      <h2>The same run, by the clock</h2>
+    </div>
+    <ol class="timeline">
+      <li><span class="t">5:00–5:59</span><div><p>Vercel Cron calls <code>/api/generate</code>.</p><span class="who">Vercel</span></div></li>
+      <li><span class="t">+ 2 sec</span><div><p>The function loads your topics (Canada, Tech, Business) and pulls about 10 headlines for each.</p><span class="who">Supabase · Google News</span></div></li>
+      <li><span class="t">+ 20 sec</span><div><p>Claude picks the stories that matter, removes duplicates and writes a 4-minute script.</p><span class="who">Claude API</span></div></li>
+      <li><span class="t">+ 40 sec</span><div><p>The script becomes an MP3 in your chosen voice and is saved with today's date.</p><span class="who">Text-to-speech · Vercel Blob</span></div></li>
+      <li><span class="t">+ 1 min</span><div><p>The podcast feed now lists today's episode; your podcast app downloads it in the background.</p><span class="who">Podcast feed</span></div></li>
+      <li><span class="t">7:30</span><div><p>The open Morning Desk tab plays the briefing, or you press play in your podcast app.</p><span class="who">You</span></div></li>
+    </ol>
+  </section>
+
+  <!-- COMPONENTS -->
+  <section>
+    <div class="prose">
+      <div class="eyebrow m">Reference</div>
+      <h2>Every component</h2>
+      <p>Costs are rough guidance; check each provider's pricing page before signing up.</p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Component</th><th>Half</th><th>What it does here</th><th>Cost</th></tr></thead>
+        <tbody>
+          <tr><td>Cursor or VS Code</td><td><span class="tag b">Build</span></td><td>Code editor that holds the project folder. You run the app on your own computer here before shipping it.</td><td class="cost">Free (Cursor has paid tiers)</td></tr>
+          <tr><td>Claude Code</td><td><span class="tag b">Build</span></td><td>Writes and edits the code with you, runs commands, and can make the Git commits. Works in the terminal or as an extension inside either editor.</td><td class="cost">Claude plan</td></tr>
+          <tr><td>Git</td><td><span class="tag b">Build</span></td><td>Records a saved snapshot (commit) of the code each time a change works, so you can always go back.</td><td class="cost">Free</td></tr>
+          <tr><td>GitHub</td><td><span class="tag b">Build</span></td><td>Stores the code online and tells Vercel when there's something new to publish.</td><td class="cost">Free</td></tr>
+          <tr><td>Vercel</td><td><span class="tag b">Build</span> <span class="tag r">Run</span></td><td>Hosts the website and the briefing function, runs the daily schedule, and stores the MP3 files (Vercel Blob).</td><td class="cost">Free Hobby plan</td></tr>
+          <tr><td>Next.js</td><td><span class="tag b">Build</span> <span class="tag r">Run</span></td><td>The framework the app is written in. One project holds both the pages you see and the behind-the-scenes functions.</td><td class="cost">Free</td></tr>
+          <tr><td>Supabase</td><td><span class="tag r">Run</span></td><td>Database for your settings and a history of past briefings.</td><td class="cost">Free tier</td></tr>
+          <tr><td>Google News RSS</td><td><span class="tag r">Run</span></td><td>Source of headlines by topic or keyword. A paid news API can replace it later if you want article text.</td><td class="cost">Free</td></tr>
+          <tr><td>Claude API</td><td><span class="tag r">Run</span></td><td>Turns raw headlines into a short, spoken-style summary. Billed separately from a Claude subscription, through the Claude Console.</td><td class="cost">Pay per use, cents a day</td></tr>
+          <tr><td>Text-to-speech</td><td><span class="tag r">Run</span></td><td>Reads the script aloud and returns an MP3. Choose one: OpenAI TTS, ElevenLabs, or Google Cloud TTS.</td><td class="cost">Pay per character</td></tr>
+          <tr><td>Podcast feed</td><td><span class="tag r">Run</span></td><td>A page in your app listing each day's MP3, which any podcast app that accepts a feed address can subscribe to.</td><td class="cost">Free</td></tr>
+          <tr><td>Resend (optional)</td><td><span class="tag r">Run</span></td><td>Sends a morning email with the listen link.</td><td class="cost">Free tier</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- PROJECT + KEYS -->
+  <section class="two">
+    <div>
+      <div class="eyebrow m">Inside the project folder</div>
+      <h2>What the code looks like</h2>
+      <pre>morning-desk/
+├── app/
+│   ├── page.tsx            <span class="c"># settings + player screen</span>
+│   ├── api/generate/
+│   │   └── route.ts        <span class="c"># the daily briefing function</span>
+│   └── feed.xml/
+│       └── route.ts        <span class="c"># podcast feed</span>
+├── lib/
+│   ├── news.ts             <span class="c"># step 2: fetch headlines</span>
+│   ├── summarize.ts        <span class="c"># step 3: Claude API call</span>
+│   └── speak.ts            <span class="c"># step 4: text-to-speech</span>
+├── vercel.json             <span class="c"># the daily schedule</span>
+├── .env.local              <span class="c"># secret keys (not in Git)</span>
+├── .gitignore
+└── package.json</pre>
+    </div>
+    <div>
+      <div class="eyebrow m">Before you start</div>
+      <h2>Accounts and keys</h2>
+      <ul class="keys">
+        <li><strong>GitHub</strong> account, and Git installed on your computer</li>
+        <li><strong>Vercel</strong> account, signed in with GitHub</li>
+        <li><strong>Supabase</strong> project → <code>SUPABASE_URL</code>, <code>SUPABASE_KEY</code></li>
+        <li><strong>Claude Console</strong> API key → <code>ANTHROPIC_API_KEY</code></li>
+        <li><strong>Voice service</strong> key → e.g. <code>OPENAI_API_KEY</code></li>
+        <li>A random password you make up → <code>CRON_SECRET</code>, so only Vercel's scheduler can trigger the briefing</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- PHASES -->
+  <section>
+    <div class="prose">
+      <div class="eyebrow m">Build order</div>
+      <h2>How we'd put it together</h2>
+      <p>Each step ends with something you can try, and each one goes live through the same commit → push → deploy loop.</p>
+    </div>
+    <ol class="phases">
+      <li><strong>Set up the tools</strong>Install the editor, Git and Claude Code. Create the Next.js project and push it to GitHub.</li>
+      <li><strong>Deploy an empty app</strong>Connect the repo to Vercel so every push goes live. Confirms the whole pipeline works.</li>
+      <li><strong>Generate one briefing</strong>Build steps 2–4 and trigger them by hand: headlines in, MP3 out.</li>
+      <li><strong>Save settings</strong>Add Supabase and the settings screen from the prototype.</li>
+      <li><strong>Automate it</strong>Add the daily schedule, Blob storage and the podcast feed.</li>
+      <li><strong>Polish</strong>Pick the voice, tune the script style, add email if you want it.</li>
+    </ol>
+  </section>
+
+  <p class="sources">Scheduling limits from <a href="https://vercel.com/docs/cron-jobs/usage-and-pricing" target="_blank" rel="noopener">Vercel's cron job usage and pricing docs</a>.</p>
+</main>
+
+</body></html>
