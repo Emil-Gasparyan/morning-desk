@@ -3,18 +3,32 @@ import type { TopicHeadlines } from "./headlines";
 import { SOURCES } from "./sources";
 import { isSection, type Headline, type TopicId } from "./topics";
 
-// Builds the spoken script for one briefing. For now it's a plain read-out
-// of headlines (no AI). Swapping this function for a Claude API call later
-// is the only change needed to get AI-written scripts.
+// Builds the script for one episode, in a short podcast style: quick show
+// intro, one segment per topic, brief sign-off. For now it's a plain
+// read-out of headlines (no AI). Swapping this function for a Claude API
+// call later is the only change needed to get AI-written scripts.
 
 const WORDS_PER_MINUTE = 150;
+
+// Pause between segments. ElevenLabs reads <break> tags as silence.
+const SEGMENT_PAUSE = '<break time="0.8s" />';
 
 export function headlineBudget(minutes: number) {
   // A spoken headline with its attribution is about 20 words.
   return Math.max(3, Math.round((minutes * WORDS_PER_MINUTE - 60) / 20));
 }
 
-export function buildScript(prefs: Preferences, topics: TopicHeadlines[], maxHeadlines: number, now = new Date()) {
+export type Script = {
+  text: string; // for reading on screen
+  spoken: string; // what the voice reads, with pauses between segments
+};
+
+export function buildScript(
+  prefs: Preferences,
+  topics: TopicHeadlines[],
+  maxHeadlines: number,
+  now = new Date(),
+): Script {
   const picked = pickHeadlines(topics, maxHeadlines);
   const date = now.toLocaleDateString("en-US", {
     weekday: "long",
@@ -25,15 +39,21 @@ export function buildScript(prefs: Preferences, topics: TopicHeadlines[], maxHea
   const hour = Number(now.toLocaleString("en-US", { hour: "numeric", hour12: false, timeZone: prefs.timeZone }));
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
-  const parts = [`${greeting}, ${prefs.name}. It's ${date}, and this is your Morning Desk briefing.`];
+  const segments: string[][] = [
+    [`This is Morning Desk. ${greeting}, ${prefs.name}. It's ${date}, and here's what you need to know.`],
+  ];
 
   picked.forEach(({ id, label, headlines }, i) => {
-    parts.push(i === 0 ? `Let's start with ${spokenLabel(id, label)}.` : `Next, ${spokenLabel(id, label)}.`);
-    headlines.forEach((h, j) => parts.push(sentence(h, j)));
+    const intro = segmentIntro(spokenLabel(id, label), i, picked.length);
+    segments.push([intro, ...headlines.map((h, j) => sentence(h, i + j))]);
   });
 
-  parts.push("That's your briefing for today. Have a great day, and we'll see you tomorrow.");
-  return parts.join("\n\n");
+  segments.push([`That's Morning Desk for today. Thanks for listening, ${prefs.name}. Have a great day.`]);
+
+  return {
+    text: segments.map((s) => s.join("\n\n")).join("\n\n"),
+    spoken: segments.map((s) => s.join("\n\n")).join(`\n\n${SEGMENT_PAUSE}\n\n`),
+  };
 }
 
 // Spread the headline budget across topics in order, skipping stories that
@@ -71,18 +91,28 @@ function spokenLabel(id: TopicId, label: string) {
   return isSection(id) ? `${label.toLowerCase()} news` : label;
 }
 
+// Podcast-style segment openers, varied so episodes don't sound templated.
+function segmentIntro(label: string, i: number, total: number) {
+  if (i === 0) return `First up, ${label}.`;
+  if (i === total - 1 && total > 2) return `And finally, ${label}.`;
+  const openers = [`Turning to ${label}.`, `Now, ${label}.`, `Next up, ${label}.`];
+  return openers[(i - 1) % openers.length];
+}
+
 // Vary the attribution so it doesn't sound robotic.
 function sentence(h: Headline, i: number) {
   const source =
     SOURCES.find((s) => h.sourceDomain === s.domain || h.sourceDomain.endsWith(`.${s.domain}`))?.name ?? h.source;
   const title = h.title.replace(/[.!?]*$/, "");
   if (!source) return `${title}.`;
-  switch (i % 3) {
+  switch (i % 4) {
     case 0:
-      return `${source} reports: ${title}.`;
-    case 1:
       return `${title}. That's from ${source}.`;
-    default:
+    case 1:
       return `According to ${source}: ${title}.`;
+    case 2:
+      return `${source} has this one: ${title}.`;
+    default:
+      return `${title}, via ${source}.`;
   }
 }

@@ -8,7 +8,7 @@ import type { Preferences } from "@/lib/preferences";
 import { SOURCES } from "@/lib/sources";
 import { useNow } from "@/lib/use-now";
 import { AppShell } from "./app-shell";
-import { AudioBriefing } from "./audio-briefing";
+import { PastEpisodes, TodayEpisode, useEpisodes } from "./episodes";
 import { formatTime } from "./preference-fields";
 import { Card } from "./ui";
 
@@ -41,6 +41,7 @@ function Briefing({ prefs }: { prefs: Preferences }) {
   }, [query, reload]);
 
   const loading = !result || result.query !== query;
+  const { episodes, reload: reloadEpisodes } = useEpisodes();
 
   return (
     <div className="space-y-10">
@@ -54,7 +55,7 @@ function Briefing({ prefs }: { prefs: Preferences }) {
       </section>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <AudioBriefing prefs={prefs} />
+        <TodayEpisode prefs={prefs} episodes={episodes} onMade={reloadEpisodes} />
 
         <Card className="flex flex-col p-6">
           <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-widest text-zinc-500">
@@ -74,6 +75,8 @@ function Briefing({ prefs }: { prefs: Preferences }) {
           </Link>
         </Card>
       </div>
+
+      <PastEpisodes prefs={prefs} episodes={episodes} />
 
       <section>
         <div className="flex items-end justify-between gap-4">

@@ -17,10 +17,9 @@ const VOICE_IDS: Record<VoiceId, string> = {
 // more robotic voice.
 const MODEL = process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2";
 
-// Responses must stay under Vercel's ~4.5 MB limit (sent as base64, which
-// adds a third). 64 kbps suits briefings up to ~5 minutes; longer ones drop
-// to 32 kbps. Once briefings are saved to storage this limit goes away.
-const LONG_SCRIPT_CHARS = 5500;
+// 64 kbps MP3: clear for speech, about 0.5 MB per minute.
+export const FORMAT = "mp3_44100_64";
+export const BITRATE = 64_000;
 
 // Keep each request well under the model's 10,000-character limit.
 const CHUNK_CHARS = 4000;
@@ -38,7 +37,6 @@ export async function speak(text: string, voice: VoiceId): Promise<Uint8Array> {
   const key = process.env.ELEVENLABS_API_KEY;
   if (!key) throw new SpeechError("Text-to-speech isn't set up yet (missing ELEVENLABS_API_KEY).", 503);
 
-  const format = text.length > LONG_SCRIPT_CHARS ? "mp3_44100_32" : "mp3_44100_64";
   const chunks = splitText(text);
   const parts: Uint8Array[] = [];
 
@@ -46,7 +44,7 @@ export async function speak(text: string, voice: VoiceId): Promise<Uint8Array> {
   // the tone flows across the joins. MP3 pieces can simply be joined.
   for (let i = 0; i < chunks.length; i++) {
     const res = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_IDS[voice] ?? VOICE_IDS.warm}?output_format=${format}`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_IDS[voice] ?? VOICE_IDS.warm}?output_format=${FORMAT}`,
       {
         method: "POST",
         headers: { "xi-api-key": key, "Content-Type": "application/json", Accept: "audio/mpeg" },
